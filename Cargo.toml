@@ -1,0 +1,12 @@
+[package]
+name = "trackmania-fuzzer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+libafl = { path = "../LibAFL/libafl/", features = ["default", "nautilus"] }
+libafl_qemu = { path = "../LibAFL/libafl_qemu/", features = ["i386"] }
+
+[profile.release]
+overflow-checks = true
