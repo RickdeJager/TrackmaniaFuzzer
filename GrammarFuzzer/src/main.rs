@@ -51,7 +51,7 @@ use helpers::{QemuTimeFreezeHelper, QemuGPRegisterHelper};
 
 const SERVER_BINARY: &str = "./TrackmaniaServer";
 
-const MAX_XML_SIZE: u32 = 0x6000;
+const MAX_XML_SIZE: u32 = 0x80000;
 //const XML_INIT: u32 = 0x085cad97; // XML specific
 //const XML_INIT: u32 = 0x084c7890; // Game loop once
 
@@ -107,7 +107,7 @@ fn main() -> Result<(), Error> {
     std::env::set_current_dir(std::path::Path::new("../Server")).unwrap();
 
     // Load a nautilus context from a grammar file.
-    let context = NautilusContext::from_file(6, "./auto-grammar.json");
+    let context = NautilusContext::from_file(8, "./auto-grammar.json");
 
     if std::env::args()
         .collect::<Vec<String>>()
@@ -176,7 +176,7 @@ fn main() -> Result<(), Error> {
     emu.set_breakpoint(XML_RPC_EXIT_UNINIT);
     emu.set_breakpoint(XML_RPC_EXIT_TOO_LARGE);
     emu.set_breakpoint(XML_RPC_LEAVE);
-    emu.set_breakpoint(TINYXML_ASSERT);
+//    emu.set_breakpoint(TINYXML_ASSERT);
 
     // Set a breakpoint on the normal ret addr in case we missed an exit
     emu.set_breakpoint(ret);
@@ -195,7 +195,6 @@ fn main() -> Result<(), Error> {
     let mut run_client = |state: Option<_>, mut mgr, _core_id| {
 
         let mut buf = vec![];
-        let empty = [0u8; MAX_XML_SIZE as usize];
         // The wrapped harness function
         let mut harness = |input: &NautilusInput| {
             input.unparse(&context, &mut buf);
@@ -207,12 +206,13 @@ fn main() -> Result<(), Error> {
             }
             let len_u32 = len as u32;
 
+//            println!(">>>>>>>> {}", buf.iter().map(|&x| x as char).collect::<String>());
+
             unsafe {
                 // Write our data into the expected format
-                emu.write_mem(input_addr, &empty);
                 emu.write_mem(input_addr, &buf[..len]);
                 emu.write_mem(xml_size_p, &len_u32.to_le_bytes());
- //               emu.write_mem(xml_size_p2, &len_u32.to_le_bytes()); // TODO
+                emu.write_mem(xml_size_p2, &len_u32.to_le_bytes()); // TODO
             }
 
             // Run the emulator until next BP
@@ -291,10 +291,10 @@ fn main() -> Result<(), Error> {
         )?;
 
         // wrap the `QemuExecutor` with a `TimeoutExecutor` that sets a timeout before each run
-        let executor = TimeoutExecutor::new(executor, std::time::Duration::from_millis(200));
+        let executor = TimeoutExecutor::new(executor, std::time::Duration::from_millis(300));
         // Show the cmplog observer
         let mut executor = ShadowExecutor::new(executor, tuple_list!(cmplog_observer));
-
+        
         let mut generator = NautilusGenerator::new(&context);
 
         // In case the corpus is empty (i.e. on first run), generate an initial corpus
@@ -306,7 +306,7 @@ fn main() -> Result<(), Error> {
                     &mut executor,
                     &mut generator,
                     &mut mgr,
-                    50,
+                    100,
                 )
                 .unwrap_or_else(|_| {
                     println!("Failed generate initial corpus");
@@ -314,21 +314,19 @@ fn main() -> Result<(), Error> {
                 });
         }
 
-        let mutator = StdScheduledMutator::with_max_iterations(
+        let mutator = StdScheduledMutator::with_max_stack_pow(
             tuple_list!(
                 NautilusRandomMutator::new(&context),
                 NautilusRandomMutator::new(&context),
                 NautilusRandomMutator::new(&context),
-                NautilusRandomMutator::new(&context),
-                NautilusRandomMutator::new(&context),
                 NautilusRecursionMutator::new(&context),
-                NautilusRecursionMutator::new(&context),
-                NautilusSpliceMutator::new(&context),
                 NautilusSpliceMutator::new(&context),
             ),
-            2,
+            3,
         );
-        let mut stages = tuple_list!(StdMutationalStage::new(mutator));
+        let mut stages = tuple_list!(
+            StdMutationalStage::new(mutator)
+        );
 
         fuzzer.fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)?;
         Ok(())
@@ -343,8 +341,8 @@ fn main() -> Result<(), Error> {
         .monitor(monitor)
         .run_client(&mut run_client)
         .cores(&Cores::from_cmdline("0-3").unwrap())
-        //.stdout_file(Some("/dev/null"))
-        .stdout_file(Some("/tmp/blah"))
+        .stdout_file(Some("/dev/null"))
+        //.stdout_file(Some("/tmp/blah"))
         .build()
         .launch()
     {
