@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 libafl = { path = "../LibAFL/libafl/", features = ["default", "nautilus"] }
-libafl_qemu = { path = "../LibAFL/libafl_qemu/", features = ["i386"] }
+libafl_qemu = { path = "../LibAFL/libafl_qemu/", features = ["i386", "usermode"] }
+
+regex = "1"
 
 [profile.release]
 overflow-checks = true

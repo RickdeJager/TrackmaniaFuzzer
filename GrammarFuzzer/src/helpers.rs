@@ -1,36 +1,12 @@
 // General imports
-use std::{env, fs, pin::Pin, ptr};
 use libafl::{
-    bolts::{
-        current_nanos,
-        launcher::Launcher,
-        os::Cores,
-        rands::StdRand,
-        shmem::{ShMemProvider, StdShMemProvider},
-        tuples::tuple_list,
-    },
-    corpus::{
-        Corpus, InMemoryCorpus, OnDiskCorpus,
-    },
-    events::EventConfig,
-    executors::{ExitKind, TimeoutExecutor},
-    feedback_and_fast, feedback_or,
-    feedbacks::{CrashFeedback, MapFeedbackState, MaxMapFeedback, TimeFeedback},
-    fuzzer::{Fuzzer, StdFuzzer},
     inputs::Input,
-    monitors::MultiMonitor,
-    mutators::StdScheduledMutator,
-    observers::{HitcountsMapObserver, TimeObserver, VariableMapObserver},
-    stages::StdMutationalStage,
-    state::{HasCorpus, HasMetadata, StdState},
-    Error,
+    state::{HasMetadata},
 };
-
 
 // Qemu imports
 use libafl_qemu::{
-       Emulator, SyscallHookResult, GuestAddr, QemuHelper, QemuHelperTuple, QemuHooks, Regs,
-       
+    Emulator, QemuHelper, QemuHelperTuple, QemuHooks, SyscallHookResult, Regs
 };
 
 // TODO; Pull these from qemu instead
@@ -38,26 +14,37 @@ const SYS_gettimeofday: i32 = 78;
 const SYS_clockgettime: i32 = 265;
 const SYS_brk: i32 = 45;
 
+pub fn step_emu(emu: &Emulator) {
+    let eip: u32 = emu.read_reg(Regs::Eip).unwrap();
+    for i in 1..8 {
+        emu.set_breakpoint(eip+i);
+    }
+    unsafe{emu.run();}
+    for i in 1..8 {
+        emu.remove_breakpoint(eip+i);
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct QemuTimeFreezeHelper {
     // time of snapshot
-    // ...
+// ...
 }
-
 
 impl<I, S> QemuHelper<I, S> for QemuTimeFreezeHelper
 where
     I: Input,
     S: HasMetadata,
 {
-    fn init_hooks<'a, QT>(&self, hooks: Pin<&QemuHooks<'a, I, QT, S>>)
+    fn init_hooks<'a, QT>(&self, hooks: &QemuHooks<'a, I, QT, S>)
     where
         QT: QemuHelperTuple<I, S>,
     {
-        hooks.syscalls(hook_time_syscalls::<I, QT, S>);
+       // hooks.syscalls(hook_time_syscalls::<I, QT, S>);
     }
 }
 
+/*
 #[allow(clippy::too_many_arguments)]
 pub fn hook_time_syscalls<I, QT, S>(
     emulator: &Emulator,
@@ -77,17 +64,16 @@ where
     I: Input,
     QT: QemuHelperTuple<I, S>,
 {
-  //  println!("Hooked {}", sys_num);
-  //  let eip: u32 = emulator.read_reg(Regs::Eip).unwrap();
-  //  println!("eip {:x}", eip);
+    //  println!("Hooked {}", sys_num);
+    //  let eip: u32 = emulator.read_reg(Regs::Eip).unwrap();
+    //  println!("eip {:x}", eip);
     match sys_num {
- //       SYS_brk => SyscallHookResult::new(Some(-1i64 as u64)),
         SYS_gettimeofday => SyscallHookResult::new(Some(-1i64 as u64)),
         SYS_clockgettime => SyscallHookResult::new(Some(-1i64 as u64)),
-        _ =>  SyscallHookResult::new(None),
+        _ => SyscallHookResult::new(None),
     }
 }
-
+*/
 
 // wrapper around general purpose register resets, mimics AFL_QEMU_PERSISTENT_GPR
 ///   ref: https://github.com/AFLplusplus/AFLplusplus/blob/stable/qemu_mode/README.persistent.md#24-resetting-the-register-state
@@ -135,4 +121,3 @@ impl QemuGPRegisterHelper {
             })
     }
 }
-
