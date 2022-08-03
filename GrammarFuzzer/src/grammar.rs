@@ -189,8 +189,7 @@ pub fn get_trackmania_context(tree_depth: usize) -> NautilusContext {
         add_rule!("STRUCT_MEMBER_NAME", elem);
     }
 
-    //for chunk in struct_member_names.chunks(5) {
-    for chunk in struct_member_names.chunks(struct_member_names.len()) {
+    for chunk in struct_member_names.chunks(5) {
         let mut full_struct = String::new();
         for elem in chunk {
             full_struct.push_str(&format!("<member><name>{elem}</name>{{VALUE}}</member>"))
