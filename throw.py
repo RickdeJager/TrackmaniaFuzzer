@@ -4,8 +4,7 @@ from pwn import *
 
 
 HOST = 'localhost'
-PORT = 5001
-CRASH_DIR = './qemu'
+PORT = 5002
 
 def login(p):
     print("Valid header!")

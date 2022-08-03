@@ -144,6 +144,14 @@ fn main() -> Result<(), Error> {
         emu.write_mem(socket_auth, &0i32.to_le_bytes());
         // Set the data pointer to point to our mutated input
         emu.write_mem(xml_data_p, &input_addr.to_le_bytes());
+
+
+        // Silence the binary, as if we were in daemon mode
+        emu.write_mem(0x08ce05e0u32, &1u32.to_le_bytes());
+        let mut g_server_obj = [0; 4];
+        emu.read_mem(0x08cbaab4u32, &mut g_server_obj);
+        let g_server_obj = u32::from_le_bytes(g_server_obj);
+        emu.write_mem(g_server_obj+0x4cu32, &0u32.to_le_bytes());
     }
 
     // Set a breakpoint on the ret addr
@@ -254,7 +262,7 @@ fn main() -> Result<(), Error> {
                     &mut executor,
                     &mut generator,
                     &mut mgr,
-                    100,
+                    50,
                 )
                 .unwrap_or_else(|_| {
                     println!("Failed generate initial corpus");
@@ -270,9 +278,8 @@ fn main() -> Result<(), Error> {
                 NautilusRandomMutator::new(&context),
                 NautilusRandomMutator::new(&context),
                 NautilusRandomMutator::new(&context),
-                NautilusRandomMutator::new(&context),
                 NautilusRecursionMutator::new(&context),
-                NautilusSpliceMutator::new(&context),
+                NautilusRecursionMutator::new(&context),
                 NautilusSpliceMutator::new(&context),
                 NautilusSpliceMutator::new(&context),
             ),
@@ -292,7 +299,7 @@ fn main() -> Result<(), Error> {
         .configuration(EventConfig::from_build_id())
         .monitor(monitor)
         .run_client(&mut run_client)
-        .cores(&Cores::from_cmdline("0-3").unwrap())
+        .cores(&Cores::from_cmdline("0").unwrap())
         //.stdout_file(Some("/dev/null"))
         .stdout_file(Some("/tmp/blah"))
         .build()

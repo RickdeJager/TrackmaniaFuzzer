@@ -93,7 +93,7 @@ pub fn get_trackmania_context(tree_depth: usize) -> NautilusContext {
     // Strings
     for elem in [
         "",
-        /*"%999999s", "%99 ",*/
+        "%999999s", "%99 ", "%0999d",
         "{INT}",
         "dateTime.iso8601",
         "http://",
@@ -102,7 +102,7 @@ pub fn get_trackmania_context(tree_depth: usize) -> NautilusContext {
     ] {
         add_rule!("STRING", elem);
     }
-    for c in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$^&*()_+'<>?[]|,".chars() {
+    for c in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ%!@#$^&*()_+'<>?[]|,".chars() {
         add_rule!("STRING", c.to_string());
     }
     add_rule!("STRING", "{STRING}{STRING}");
@@ -189,7 +189,7 @@ pub fn get_trackmania_context(tree_depth: usize) -> NautilusContext {
         add_rule!("STRUCT_MEMBER_NAME", elem);
     }
 
-    for chunk in struct_member_names.chunks(5) {
+    for chunk in struct_member_names.windows(5) {
         let mut full_struct = String::new();
         for elem in chunk {
             full_struct.push_str(&format!("<member><name>{elem}</name>{{VALUE}}</member>"))
