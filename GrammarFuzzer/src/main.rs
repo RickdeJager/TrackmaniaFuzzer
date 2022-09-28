@@ -42,7 +42,7 @@ use libafl::{
 
 // Own imports
 mod helpers;
-use helpers::{QemuGPRegisterHelper, QemuTimeFreezeHelper};
+use helpers::{QemuGPRegisterHelper};
 
 mod grammar;
 
@@ -82,7 +82,7 @@ fn create_concrete_outputs(context: &NautilusContext) {
 
 fn main() -> Result<(), Error> {
     // Trackmania will want to load stuff relative to their server dir.
-    std::env::set_current_dir(std::path::Path::new("../../Server")).unwrap();
+    std::env::set_current_dir(std::path::Path::new("../Server")).unwrap();
 
     // Load a nautilus context
     let context = grammar::get_trackmania_context(10);
@@ -98,6 +98,11 @@ fn main() -> Result<(), Error> {
 
     let args = vec![
         "qemu-i386".to_string(),
+        /* 
+         Uncomment to attach GDB
+        "-g".to_string(),
+        "1234".to_string(),
+        */
         SERVER_BINARY.to_string(),
         "/nodaemon".to_string(),
         "/lan".to_string(),
@@ -137,7 +142,6 @@ fn main() -> Result<(), Error> {
 
     let xml_size_p = xml_rpc_struct;
     let xml_data_p = xml_rpc_struct + 4;
-    let xml_size_p2 = xml_rpc_struct + 8;
     unsafe {
         // Edit the auth details in-place
         // 0 (God rights), 1 (SuperAdmin), 2 (Admin), 3 (User), 4 (Default)
@@ -171,10 +175,6 @@ fn main() -> Result<(), Error> {
             }
 
             let len_u32 = buf.len() as u32;
-
-            // TODO; REMOVE
-            //buf = "Hans".to_string().as_bytes().to_vec();
-            //println!(">>>>> {}", String::from_utf8_lossy(&buf));
 
             unsafe {
                 // Write our data into the expected format

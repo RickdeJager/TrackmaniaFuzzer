@@ -2,4 +2,4 @@
 
 killall -9 trackmania-fuzzer
 
-cargo run
+cargo run --release

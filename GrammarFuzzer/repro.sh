@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cargo run -- repro
+cargo run --release -- repro
