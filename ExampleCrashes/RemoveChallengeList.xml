@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<methodCall>
+    <methodName>RemoveChallengeList</methodName>
+    <params>
+        <param>
+            <value>
+                <array>
+                    <data>
+                        <value>
+                            <string>%s%s%s</string>
+                        </value>
+                    </data>
+                </array>
+            </value>
+        </param>
+    </params>
+</methodCall>

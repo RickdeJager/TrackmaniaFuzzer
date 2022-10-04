@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<methodCall>
+    <methodName>AddChallenge</methodName>
+    <params>
+        <param>
+            <value>
+                <string>%s%s%s</string>
+            </value>
+        </param>
+    </params>
+</methodCall>

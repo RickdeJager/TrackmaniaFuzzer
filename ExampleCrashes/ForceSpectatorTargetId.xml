@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<methodCall>
+    <methodName>ForceSpectatorTargetId</methodName>
+    <params>
+        <param>
+            <value>
+                <i4>-1</i4>
+            </value>
+        </param>
+        <param>
+            <value>
+                <i4>-1</i4>
+            </value>
+        </param>
+        <param>
+            <value>
+                <i4>2</i4>
+            </value>
+        </param>
+    </params>
+</methodCall>
