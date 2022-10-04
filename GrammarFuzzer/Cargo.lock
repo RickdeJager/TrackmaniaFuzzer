@@ -1843,6 +1843,7 @@ dependencies = [
  "libafl",
  "libafl_qemu",
  "regex",
+ "syscall-numbers",
 ]
 
 [[package]]

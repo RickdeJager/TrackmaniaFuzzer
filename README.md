@@ -7,7 +7,11 @@ This repository is accompanied by two blog posts:
 # Fuzzer
 ## Setup
 1. Download and extract the trackmania server in the "Server" directory in the repository.
-1. Ensure that the user that will be running the fuzzer does not have permission to create new files here. You _will_ have a bad time if you don't do this, as RPC calls can legitimately create new files.
+1. Ensure that the user that will be running the fuzzer does not have permission to create new files here. You _will_ have a bad time if you don't do this, as RPC calls can legitimately create new files.  
+
+![](.github/bad_day.png "Don't ask me how I know :P")
+
+If qemu is giving you trouble on startup, you may need to run the server in `qemu-user` once with "normal" file permissions first, before removing write/create permissions againt.
 
 ## Running
 1. execute the "run.sh" script from within "./GrammarFuzzer"
@@ -15,3 +19,7 @@ This repository is accompanied by two blog posts:
 
 ## Triaging
 1. execute the "repro.sh" script from within "./GrammarFuzzer" to get the raw XML files that caused a crash.
+
+
+# Crashes
+Some example crash files are [included in this repository](./ExampleCrashes).

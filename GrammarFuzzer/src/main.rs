@@ -42,7 +42,7 @@ use libafl::{
 
 // Own imports
 mod helpers;
-use helpers::{QemuGPRegisterHelper};
+use helpers::{QemuGPRegisterHelper, QemuFakeFileHelper};
 
 mod grammar;
 
@@ -51,8 +51,8 @@ const SERVER_BINARY: &str = "./TrackmaniaServer";
 const MAX_XML_SIZE: u32 = 0x00080000;
 
 const XML_RPC_CALL: u32 = 0x087d8ba0;
-const CRASH_DIR: &str = "./nautilus-crashes";
-const CRASH_DIR_CONCRETE: &str = "./crashes";
+const CRASH_DIR: &str = "../nautilus-crashes";
+const CRASH_DIR_CONCRETE: &str = "../crashes";
 
 // Take the entire output directory, copy all files over to a concrete directory.
 fn create_concrete_outputs(context: &NautilusContext) {
@@ -84,14 +84,14 @@ fn main() -> Result<(), Error> {
     // Trackmania will want to load stuff relative to their server dir.
     std::env::set_current_dir(std::path::Path::new("../Server")).unwrap();
 
+    // Do we want to exclude format string bugs?
+    let no_format_string = std::env::args().find(|a| a == "--noformat").is_some();
+    let do_repro = std::env::args().find(|a| a == "--repro").is_some();
+
     // Load a nautilus context
     let context = grammar::get_trackmania_context(10);
 
-    if std::env::args()
-        .collect::<Vec<String>>()
-        .iter()
-        .any(|arg| arg == "repro")
-    {
+    if do_repro {
         create_concrete_outputs(&context);
         return Ok(());
     }
@@ -149,13 +149,14 @@ fn main() -> Result<(), Error> {
         // Set the data pointer to point to our mutated input
         emu.write_mem(xml_data_p, &input_addr.to_le_bytes());
 
-
-        // Silence the binary, as if we were in daemon mode
-        emu.write_mem(0x08ce05e0u32, &1u32.to_le_bytes());
-        let mut g_server_obj = [0; 4];
-        emu.read_mem(0x08cbaab4u32, &mut g_server_obj);
-        let g_server_obj = u32::from_le_bytes(g_server_obj);
-        emu.write_mem(g_server_obj+0x4cu32, &0u32.to_le_bytes());
+        if no_format_string {
+            // Silence the binary, as if we were in daemon mode
+            emu.write_mem(0x08ce05e0u32, &1u32.to_le_bytes());
+            let mut g_server_obj = [0; 4];
+            emu.read_mem(0x08cbaab4u32, &mut g_server_obj);
+            let g_server_obj = u32::from_le_bytes(g_server_obj);
+            emu.write_mem(g_server_obj+0x4cu32, &0u32.to_le_bytes());
+        }
     }
 
     // Set a breakpoint on the ret addr
@@ -204,10 +205,7 @@ fn main() -> Result<(), Error> {
             NautilusFeedback::new(&context)
         );
 
-        let mut objective = feedback_and_fast!(
-            CrashFeedback::new(),
-            MaxMapFeedback::new_tracking(&edges_observer, true, false)
-        );
+        let mut objective = CrashFeedback::new();
 
         let mut state = state.unwrap_or_else(|| {
             StdState::new(
@@ -237,6 +235,7 @@ fn main() -> Result<(), Error> {
                 QemuSnapshotHelper::new(),
                 QemuGPRegisterHelper::new(&emu),
                 QemuEdgeCoverageHelper::default(),
+                QemuFakeFileHelper::new(),
             ),
         );
 
@@ -299,9 +298,9 @@ fn main() -> Result<(), Error> {
         .configuration(EventConfig::from_build_id())
         .monitor(monitor)
         .run_client(&mut run_client)
-        .cores(&Cores::from_cmdline("0").unwrap())
-        //.stdout_file(Some("/dev/null"))
-        .stdout_file(Some("/tmp/blah"))
+        .cores(&Cores::from_cmdline("0-3").unwrap())
+        .stdout_file(Some("/dev/null"))
+        //.stdout_file(Some("/tmp/debug"))
         .build()
         .launch()
     {

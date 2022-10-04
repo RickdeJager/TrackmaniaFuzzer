@@ -9,6 +9,7 @@ libafl = { path = "../LibAFL/libafl/", features = ["default", "nautilus"] }
 libafl_qemu = { path = "../LibAFL/libafl_qemu/", features = ["i386", "usermode"] }
 
 regex = "1"
+syscall-numbers = "3.0.0"
 
 [profile.release]
 overflow-checks = true
