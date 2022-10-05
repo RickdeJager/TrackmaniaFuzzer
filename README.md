@@ -1,4 +1,4 @@
-# Trackmania nations forever fuzzer
+# Trackmania Nations Forever fuzzer
 
 This repository is accompanied by two blog posts, so for more information I'd recommend you read those first:
 1. [Hacking TMNF: Part 1 - Fuzzing the game server](https://blog.bricked.tech/posts/tmnf/part1/)
@@ -10,7 +10,7 @@ This repository is accompanied by two blog posts, so for more information I'd re
 ```
 sudo apt-get install -y build-essential python3-dev automake cmake git flex bison libglib2.0-dev libpixman-1-dev python3-setuptools cargo libgtk-3-dev ninja-build
 ```
-2. You need to be able to build `nautilus`, which requires nightly rust. The latest version doesn't seem fully compatible with LibAFL at time of writing (?). I used version 1.65.0-nightly, which you can install using rustup:
+2. You need to be able to build `nautilus`, which requires nightly rust. The latest version doesn't seem fully compatible with LibAFL at the time of writing (?). I used version 1.65.0-nightly, which you can install using rustup:
 ```
 rustup install nightly-2022-08-16
 rustup default nightly-2022-08-16
