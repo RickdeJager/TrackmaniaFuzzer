@@ -1,4 +1,5 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, io::Read};
+use core::ptr::addr_of_mut;
 
 // General imports
 use libafl::{
@@ -28,7 +29,10 @@ use libafl::{
 
 // Qemu imports
 use libafl_qemu::{
-    edges, edges::QemuEdgeCoverageHelper, snapshot::QemuSnapshotHelper, Emulator, MmapPerms,
+    edges::{
+        MAX_EDGES_NUM, edges_map_mut_slice, QemuEdgeCoverageHelper,
+    },
+    snapshot::QemuSnapshotHelper, Emulator, MmapPerms,
     QemuExecutor, QemuHooks, Regs,
 };
 
@@ -62,13 +66,15 @@ fn create_concrete_outputs(context: &NautilusContext) {
     for path in crashes {
         tmp.clear();
         let path = path.unwrap().path();
-        if path.extension().unwrap_or_else(|| std::ffi::OsStr::new("")) == "lafl_lock" {
-            continue;
+        if let Some(extension) = path.extension() {
+            if extension == "lafl_lock" || extension == "metadata" {
+                continue;
+            }
         }
         // Check if this file was already converted.
         let out_file = out_dir.join(path.file_name().unwrap());
         if !out_file.exists() {
-            let input = NautilusInput::from_file(path).expect("Failed to create NautilusInput");
+            let input = NautilusInput::from_file(path).expect(&format!("Failed to create NautilusInput ({out_file:?})"));
             input.unparse(context, &mut tmp);
             grammar::unparse_bounded(&context, &input, &mut tmp, MAX_XML_SIZE as usize);
 
@@ -111,6 +117,7 @@ fn main() -> Result<(), Error> {
         "/game_settings=MatchSettings/Nations/NationsGreen.txt".to_string(),
     ];
 
+    std::env::remove_var("LD_LIBRARY_PATH");
     let env: Vec<(String, String)> = Vec::new();
     let emu = Emulator::new(&args, &env);
 
@@ -176,7 +183,6 @@ fn main() -> Result<(), Error> {
             }
 
             let len_u32 = buf.len() as u32;
-
             unsafe {
                 // Write our data into the expected format
                 emu.write_mem(input_addr, &buf);
@@ -191,17 +197,20 @@ fn main() -> Result<(), Error> {
             ExitKind::Ok
         };
 
-        let edges = unsafe { &mut edges::EDGES_MAP };
-        let edges_size = unsafe { &mut edges::MAX_EDGES_NUM };
-        let edges_observer =
-            HitcountsMapObserver::new(VariableMapObserver::new("edges", edges, edges_size));
-
+        let edges_observer = unsafe {
+            HitcountsMapObserver::new(VariableMapObserver::from_mut_slice(
+                "edges",
+                edges_map_mut_slice(),
+                addr_of_mut!(MAX_EDGES_NUM),
+            ))
+        };
+    
         // Create an observation channel to keep track of the execution time and previous runtime
         let time_observer = TimeObserver::new("time");
 
         let mut feedback = feedback_or!(
             MaxMapFeedback::new_tracking(&edges_observer, true, false),
-            TimeFeedback::new_with_observer(&time_observer),
+            TimeFeedback::with_observer(&time_observer),
             NautilusFeedback::new(&context)
         );
 
@@ -232,7 +241,7 @@ fn main() -> Result<(), Error> {
         let mut hooks = QemuHooks::new(
             &emu,
             tuple_list!(
-                QemuSnapshotHelper::new(),
+          //      QemuSnapshotHelper::new(),
                 QemuGPRegisterHelper::new(&emu),
                 QemuEdgeCoverageHelper::default(),
                 QemuFakeFileHelper::new(),
@@ -298,9 +307,9 @@ fn main() -> Result<(), Error> {
         .configuration(EventConfig::from_build_id())
         .monitor(monitor)
         .run_client(&mut run_client)
-        .cores(&Cores::from_cmdline("0-3").unwrap())
-        .stdout_file(Some("/dev/null"))
-        //.stdout_file(Some("/tmp/debug"))
+        .cores(&Cores::from_cmdline("0-15").unwrap())
+        //.stdout_file(Some("/dev/null"))
+        .stdout_file(Some("/tmp/debug"))
         .build()
         .launch()
     {

@@ -1,7 +1,6 @@
 // General imports
 use libafl::{
-    state::{HasMetadata},
-    inputs::Input,
+    prelude::UsesInput,
 };
 
 // Qemu imports
@@ -21,13 +20,12 @@ pub struct QemuGPRegisterHelper {
 }
 
 /// implement the QemuHelper trait for QemuGPRegisterHelper
-impl<I, S> QemuHelper<I, S> for QemuGPRegisterHelper
+impl<S> QemuHelper<S> for QemuGPRegisterHelper
 where
-    I: Input,
-    S: HasMetadata,
+    S: UsesInput,
 {
     /// prepare helper for fuzz case; called before every fuzz case
-    fn pre_exec(&mut self, emulator: &Emulator, _input: &I) {
+    fn pre_exec(&mut self, emulator: &Emulator, _input: &S::Input) {
         self.restore(emulator);
     }
 }
@@ -68,19 +66,18 @@ pub struct QemuFakeFileHelper {
 
 const FAKE_FD_BASE: u32 = 0x10000;
 
-impl<I, S> QemuHelper<I, S> for QemuFakeFileHelper
+impl<S> QemuHelper<S> for QemuFakeFileHelper
 where
-    I: Input,
-    S: HasMetadata,
+    S: UsesInput,
 {
-    fn init_hooks<QT>(&self, hooks: &QemuHooks<'_, I, QT, S>)
+    fn init_hooks<QT>(&self, hooks: &QemuHooks<'_, QT, S>)
     where
-        QT: QemuHelperTuple<I, S>,
+        QT: QemuHelperTuple<S>,
     {
-        hooks.syscalls(hook_file_syscalls::<I, QT, S>);
+        hooks.syscalls(hook_file_syscalls::<QT, S>);
     }
 
-    fn pre_exec(&mut self, emulator: &Emulator, _input: &I) {
+    fn pre_exec(&mut self, emulator: &Emulator, _input: &S::Input) {
         self.restore(emulator);
     }
 }
@@ -93,12 +90,12 @@ impl QemuFakeFileHelper {
         }
     }
 
-    fn restore(&mut self, emulator: &Emulator) {
+    fn restore(&mut self, _emulator: &Emulator) {
         self.fd_base = FAKE_FD_BASE;
         self.fds.clear();
     }
 
-    fn handle_open(&mut self, a0: u32, a1: u32, a2: u32) -> SyscallHookResult {
+    fn handle_open(&mut self, _a0: u32, a1: u32, _a2: u32) -> SyscallHookResult {
         // write files are mockable by us
         if a1 & 1 != 0 {
             let new_fd = self.fd_base;
@@ -138,8 +135,8 @@ impl QemuFakeFileHelper {
 
 
 #[allow(clippy::too_many_arguments)]
-pub fn hook_file_syscalls<I, QT, S>(
-    hooks: &mut QemuHooks<'_, I, QT, S>,
+pub fn hook_file_syscalls<QT, S>(
+    hooks: &mut QemuHooks<'_, QT, S>,
     _state: Option<&mut S>,
     sys_num: i32,
     a0: u64,
@@ -152,8 +149,8 @@ pub fn hook_file_syscalls<I, QT, S>(
     _a7: u64,
 ) -> SyscallHookResult
 where
-    I: Input,
-    QT: QemuHelperTuple<I, S>,
+    S: UsesInput,
+    QT: QemuHelperTuple<S>,
 {
     let h = hooks.match_helper_mut::<QemuFakeFileHelper>().unwrap();
     let (a0, a1, a2) = (a0 as u32, a1 as u32, a2 as u32);
